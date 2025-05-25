@@ -17,6 +17,14 @@ const io = new Server(server, {
 // ✅ express에도 CORS 적용
 app.use(cors());
 
+app.get("/", (req, res) => {
+  res.send("Socket.IO server is running.");
+});
+
+app.get("/socket.io/", (req, res) => {
+  res.send("Socket.IO endpoint active");
+});
+
 const PORT = process.env.PORT || 3000;
 
 // 방 관리
