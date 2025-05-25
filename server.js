@@ -1,15 +1,24 @@
-// 📦 Socket.IO 기반 실시간 듀얼 서버
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const cors = require('cors'); // ✅ CORS 추가
 const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+
+// ✅ 모든 도메인 허용 (필요 시 GitHub Pages 도메인으로 제한 가능)
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 
-// 클라이언트 HTML 제공 (배포 시 필요 X)
+// 정적 파일 서빙 (로컬 테스트용, 배포 시 필요 없음)
+app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // 자동 방 관리
