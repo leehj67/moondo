@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>문도 피구 PVP 클라이언트</title>
+  <title>문도 피구 PVP</title>
   <style>
     html, body { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; }
     canvas { display: block; background: #222; }
@@ -12,7 +12,7 @@
 <canvas id="gameCanvas"></canvas>
 <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 <script>
-const socket = io("https://moondo-production.up.railway.app"); // 여기를 실제 배포 주소로 교체하세요
+const socket = io("https://moondo-production.up.railway.app");
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -36,6 +36,7 @@ const enemy = {
   y: canvas.height * 0.15,
   radius: 20,
   color: 'orange',
+  facingAngle: 0,
   hp: 100
 };
 
@@ -45,26 +46,22 @@ const AXE_SPEED = 5;
 const AXE_MAX_DISTANCE = 400;
 const COOLDOWN = 2000;
 let lastThrowTime = 0;
-
 let gameOver = false;
 let gameResult = "";
-
 const arena = {
   width: canvas.width,
   height: canvas.height,
   boundaryY: canvas.height / 2,
 };
 
+let prevState = { x: player.x, y: player.y, facingAngle: player.facingAngle };
+
 canvas.addEventListener('contextmenu', e => e.preventDefault());
-
-let mouseX = player.x;
-let mouseY = player.y;
-
 canvas.addEventListener('mousemove', (e) => {
   const rect = canvas.getBoundingClientRect();
-  mouseX = e.clientX - rect.left;
-  mouseY = e.clientY - rect.top;
-  player.facingAngle = Math.atan2(mouseY - player.y, mouseX - player.x);
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  player.facingAngle = Math.atan2(my - player.y, mx - player.x);
 });
 
 canvas.addEventListener('mousedown', (e) => {
@@ -131,6 +128,11 @@ socket.on("opponent_disconnected", () => {
   gameResult = "상대방 연결 종료";
 });
 
+socket.on("full_room", () => {
+  alert("⚠️ 방이 가득 찼습니다. 다른 사람이 플레이 중입니다.");
+  location.reload();
+});
+
 function update() {
   if (gameOver) return;
 
@@ -146,11 +148,22 @@ function update() {
     }
   }
 
-  socket.emit("player_action", {
-    x: player.x,
-    y: player.y,
-    facingAngle: player.facingAngle
-  });
+  if (
+    player.x !== prevState.x ||
+    player.y !== prevState.y ||
+    player.facingAngle !== prevState.facingAngle
+  ) {
+    socket.emit("player_action", {
+      x: player.x,
+      y: player.y,
+      facingAngle: player.facingAngle
+    });
+    prevState = {
+      x: player.x,
+      y: player.y,
+      facingAngle: player.facingAngle
+    };
+  }
 
   axes.forEach(axe => updateAxe(axe, enemy));
   opponentAxes.forEach(axe => updateAxe(axe, player, true));
@@ -173,7 +186,6 @@ function updateAxe(axe, target, isEnemy = false) {
   axe.y += axe.vy;
   axe.angle += 0.3;
   axe.distanceTraveled += Math.hypot(axe.vx, axe.vy);
-
   if (!axe.hit && isColliding(axe, target)) {
     axe.hit = true;
     axe.alive = false;
@@ -186,8 +198,7 @@ function updateAxe(axe, target, isEnemy = false) {
 function isColliding(a, b) {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
-  const distance = Math.sqrt(dx * dx + dy * dy);
-  return distance < a.radius + b.radius;
+  return Math.sqrt(dx * dx + dy * dy) < a.radius + b.radius;
 }
 
 function draw() {
