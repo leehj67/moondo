@@ -1,34 +1,31 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const cors = require('cors'); // ✅ CORS 추가
-const path = require('path');
+const cors = require('cors');
 
 const app = express();
 const server = http.createServer(app);
 
-// ✅ 모든 도메인 허용 (필요 시 GitHub Pages 도메인으로 제한 가능)
+// ✅ CORS 허용 설정: GitHub Pages 출처 허용
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: "https://leehj67.github.io", // ← 너의 GitHub Pages 주소 정확히!
     methods: ["GET", "POST"]
   }
 });
 
+// ✅ express에도 CORS 적용
+app.use(cors());
+
 const PORT = process.env.PORT || 3000;
 
-// 정적 파일 서빙 (로컬 테스트용, 배포 시 필요 없음)
-app.use(cors());
-app.use(express.static(path.join(__dirname, 'public')));
-
-// 자동 방 관리
+// 방 관리
 const rooms = {};
 
 io.on('connection', (socket) => {
   console.log('✅ 접속:', socket.id);
 
   let roomId = null;
-
   for (const id in rooms) {
     if (rooms[id].length < 2) {
       roomId = id;
@@ -46,7 +43,6 @@ io.on('connection', (socket) => {
 
   if (rooms[roomId].length === 2) {
     io.to(roomId).emit('game_start');
-    console.log(`🎮 게임 시작: ${roomId}`);
   }
 
   socket.on('player_action', (data) => {
@@ -62,7 +58,6 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log('❌ 연결 종료:', socket.id);
     const idx = rooms[roomId]?.indexOf(socket);
     if (idx !== -1) rooms[roomId].splice(idx, 1);
     io.to(roomId).emit('opponent_disconnected');
