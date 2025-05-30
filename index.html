@@ -6,10 +6,30 @@
   <style>
     html, body { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; }
     canvas { display: block; background: #222; }
+    #qButton {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 60px;
+      height: 60px;
+      background: #fff;
+      border-radius: 50%;
+      font-size: 24px;
+      font-weight: bold;
+      color: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      opacity: 0.8;
+      user-select: none;
+      z-index: 10;
+    }
   </style>
 </head>
 <body>
 <canvas id="gameCanvas"></canvas>
+<div id="qButton">Q</div>
+
 <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 <script>
 const socket = io("https://moondo-production.up.railway.app");
@@ -36,7 +56,6 @@ const enemy = {
   y: canvas.height * 0.15,
   radius: 20,
   color: 'orange',
-  facingAngle: 0,
   hp: 100
 };
 
@@ -46,22 +65,24 @@ const AXE_SPEED = 5;
 const AXE_MAX_DISTANCE = 400;
 const COOLDOWN = 2000;
 let lastThrowTime = 0;
+
 let gameOver = false;
 let gameResult = "";
+
 const arena = {
   width: canvas.width,
   height: canvas.height,
   boundaryY: canvas.height / 2,
 };
 
-let prevState = { x: player.x, y: player.y, facingAngle: player.facingAngle };
-
 canvas.addEventListener('contextmenu', e => e.preventDefault());
+let mouseX = player.x, mouseY = player.y;
+
 canvas.addEventListener('mousemove', (e) => {
   const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-  player.facingAngle = Math.atan2(my - player.y, mx - player.x);
+  mouseX = e.clientX - rect.left;
+  mouseY = e.clientY - rect.top;
+  player.facingAngle = Math.atan2(mouseY - player.y, mouseX - player.y);
 });
 
 canvas.addEventListener('mousedown', (e) => {
@@ -74,35 +95,53 @@ canvas.addEventListener('mousedown', (e) => {
   }
 });
 
-window.addEventListener('keydown', (e) => {
-  if (gameOver) return;
-  if (e.key.toLowerCase() === 'q') {
-    const now = Date.now();
-    if (now - lastThrowTime >= COOLDOWN) {
-      const angle = player.facingAngle;
-      const axe = {
-        x: player.x,
-        y: player.y,
-        vx: Math.cos(angle) * AXE_SPEED,
-        vy: Math.sin(angle) * AXE_SPEED,
-        angle: 0,
-        radius: 10,
-        color: 'red',
-        distanceTraveled: 0,
-        maxDistance: AXE_MAX_DISTANCE,
-        alive: true,
-        fade: 1.0,
-        hit: false
-      };
-      axes.push(axe);
-      socket.emit("spawn_axe", axe);
-      lastThrowTime = now;
-    }
-  }
+// 모바일 터치로 이동
+canvas.addEventListener("touchstart", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const touch = e.touches[0];
+  const x = touch.clientX - rect.left;
+  const y = touch.clientY - rect.top;
+  player.targetX = x;
+  player.targetY = y;
+  player.facingAngle = Math.atan2(y - player.y, x - player.x);
 });
 
+// 모바일 Q 버튼
+document.getElementById('qButton').addEventListener('touchstart', () => {
+  throwAxe();
+});
+
+// PC용 Q 키
+window.addEventListener('keydown', (e) => {
+  if (e.key.toLowerCase() === 'q') throwAxe();
+});
+
+function throwAxe() {
+  const now = Date.now();
+  if (now - lastThrowTime >= COOLDOWN) {
+    const angle = player.facingAngle;
+    const axe = {
+      x: player.x,
+      y: player.y,
+      vx: Math.cos(angle) * AXE_SPEED,
+      vy: Math.sin(angle) * AXE_SPEED,
+      angle: 0,
+      radius: 10,
+      color: 'red',
+      distanceTraveled: 0,
+      maxDistance: AXE_MAX_DISTANCE,
+      alive: true,
+      fade: 1.0,
+      hit: false
+    };
+    axes.push(axe);
+    socket.emit("spawn_axe", axe);
+    lastThrowTime = Date.now();
+  }
+}
+
 socket.on("game_start", () => {
-  console.log("🎮 게임 시작!");
+  console.log("🎮 게임 시작");
 });
 
 socket.on("opponent_action", (data) => {
@@ -128,14 +167,8 @@ socket.on("opponent_disconnected", () => {
   gameResult = "상대방 연결 종료";
 });
 
-socket.on("full_room", () => {
-  alert("⚠️ 방이 가득 찼습니다. 다른 사람이 플레이 중입니다.");
-  location.reload();
-});
-
 function update() {
   if (gameOver) return;
-
   const dx = player.targetX - player.x;
   const dy = player.targetY - player.y;
   const dist = Math.hypot(dx, dy);
@@ -148,22 +181,11 @@ function update() {
     }
   }
 
-  if (
-    player.x !== prevState.x ||
-    player.y !== prevState.y ||
-    player.facingAngle !== prevState.facingAngle
-  ) {
-    socket.emit("player_action", {
-      x: player.x,
-      y: player.y,
-      facingAngle: player.facingAngle
-    });
-    prevState = {
-      x: player.x,
-      y: player.y,
-      facingAngle: player.facingAngle
-    };
-  }
+  socket.emit("player_action", {
+    x: player.x,
+    y: player.y,
+    facingAngle: player.facingAngle
+  });
 
   axes.forEach(axe => updateAxe(axe, enemy));
   opponentAxes.forEach(axe => updateAxe(axe, player, true));
@@ -186,19 +208,21 @@ function updateAxe(axe, target, isEnemy = false) {
   axe.y += axe.vy;
   axe.angle += 0.3;
   axe.distanceTraveled += Math.hypot(axe.vx, axe.vy);
+
   if (!axe.hit && isColliding(axe, target)) {
     axe.hit = true;
     axe.alive = false;
     if (!isEnemy) socket.emit("hit", 20);
     else target.hp = Math.max(0, target.hp - 20);
   }
+
   if (axe.distanceTraveled >= axe.maxDistance) axe.alive = false;
 }
 
 function isColliding(a, b) {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
-  return Math.sqrt(dx * dx + dy * dy) < a.radius + b.radius;
+  return Math.hypot(dx, dy) < a.radius + b.radius;
 }
 
 function draw() {
@@ -227,9 +251,7 @@ function draw() {
 }
 
 function drawCooldownIndicator() {
-  const x = 20;
-  const y = canvas.height - 80;
-  const radius = 30;
+  const x = 20, y = canvas.height - 80, radius = 30;
   const now = Date.now();
   const elapsed = now - lastThrowTime;
   const cooldownRatio = Math.min(elapsed / COOLDOWN, 1);
@@ -253,28 +275,24 @@ function drawCooldownIndicator() {
   ctx.fillStyle = 'black';
   ctx.font = '16px sans-serif';
   ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
   ctx.fillText('Q', 0, 0);
   ctx.restore();
 }
 
-function drawHealthBar(character) {
-  const barWidth = 100;
-  const barHeight = 8;
-  const x = character.x - barWidth / 2;
-  const y = character.y - character.radius - 15;
+function drawHealthBar(c) {
+  const w = 100, h = 8;
   ctx.fillStyle = 'gray';
-  ctx.fillRect(x, y, barWidth, barHeight);
+  ctx.fillRect(c.x - w / 2, c.y - c.radius - 15, w, h);
   ctx.fillStyle = 'lime';
-  ctx.fillRect(x, y, (character.hp / 100) * barWidth, barHeight);
+  ctx.fillRect(c.x - w / 2, c.y - c.radius - 15, (c.hp / 100) * w, h);
 }
 
-function drawRotatedTriangle(x, y, radius, angle, color) {
+function drawRotatedTriangle(x, y, r, angle, color) {
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.moveTo(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
-  ctx.lineTo(x + Math.cos(angle + Math.PI * 0.75) * radius, y + Math.sin(angle + Math.PI * 0.75) * radius);
-  ctx.lineTo(x + Math.cos(angle - Math.PI * 0.75) * radius, y + Math.sin(angle - Math.PI * 0.75) * radius);
+  ctx.moveTo(x + Math.cos(angle) * r, y + Math.sin(angle) * r);
+  ctx.lineTo(x + Math.cos(angle + Math.PI * 0.75) * r, y + Math.sin(angle + Math.PI * 0.75) * r);
+  ctx.lineTo(x + Math.cos(angle - Math.PI * 0.75) * r, y + Math.sin(angle - Math.PI * 0.75) * r);
   ctx.closePath();
   ctx.fill();
 }
