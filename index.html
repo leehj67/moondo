@@ -1,75 +1,82 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>지옥의 가위바위보 PvP</title>
+  <title>지옥의 가위바위보: PVP</title>
   <style>
-    body { font-family: sans-serif; background: #111; color: #fff; text-align: center; }
-    .container { margin-top: 50px; }
-    .status { margin: 20px 0; }
-    .btn-group button {
-      margin: 10px;
-      padding: 10px 20px;
-      font-size: 18px;
+    body {
+      font-family: 'Courier New', monospace;
+      background: black;
+      color: lime;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    #log {
+      width: 100%;
+      max-width: 600px;
+      height: 300px;
+      border: 1px solid lime;
+      padding: 10px;
+      overflow-y: scroll;
+      background: #111;
+    }
+    .btns {
+      margin-top: 20px;
+    }
+    button {
+      background: lime;
+      color: black;
+      font-weight: bold;
+      padding: 10px;
+      margin: 5px;
       cursor: pointer;
     }
   </style>
-  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 <body>
-  <div class="container">
-    <h1>🔥 지옥의 가위바위보 PvP 🔥</h1>
-    <div id="status" class="status">상대를 기다리는 중...</div>
-
-    <div id="hp-status" class="status" style="display: none;">
-      내 HP: <span id="my-hp">100</span> / 상대 HP: <span id="enemy-hp">100</span>
-    </div>
-
-    <div id="choices" class="btn-group" style="display: none;">
-      <button onclick="sendMove('가위')">가위 ✌️</button>
-      <button onclick="sendMove('바위')">바위 ✊</button>
-      <button onclick="sendMove('보')">보 🖐️</button>
-    </div>
-
-    <div id="log" class="status"></div>
+  <h1>지옥의 가위바위보: PVP</h1>
+  <div id="log"></div>
+  <div class="btns">
+    <button onclick="sendMove('rock')">✊ 주먹</button>
+    <button onclick="sendMove('paper')">✋ 보</button>
+    <button onclick="sendMove('scissors')">✌ 가위</button>
   </div>
-
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
     const socket = io("https://moondo-production.up.railway.app");
+    const logDiv = document.getElementById("log");
+    let myMove = null;
 
-    let myHP = 100;
-    let enemyHP = 100;
-    let selected = false;
-
-    function sendMove(move) {
-      if (selected) return;
-      selected = true;
-      document.getElementById('log').innerText = `당신의 선택: ${move}`;
-      socket.emit('player_move', move);
+    function log(msg) {
+      logDiv.innerHTML += `> ${msg}<br>`;
+      logDiv.scrollTop = logDiv.scrollHeight;
     }
 
-    socket.on('wait', () => {
-      document.getElementById('status').innerText = '상대를 기다리는 중...';
-    });
-
-    socket.on('start', () => {
-      document.getElementById('status').innerText = '게임 시작! 선택지를 고르세요.';
-      document.getElementById('choices').style.display = 'block';
-      document.getElementById('hp-status').style.display = 'block';
-    });
-
-    socket.on('round_result', ({ myHP: mh, enemyHP: eh, log }) => {
-      myHP = mh;
-      enemyHP = eh;
-      document.getElementById('my-hp').innerText = myHP;
-      document.getElementById('enemy-hp').innerText = enemyHP;
-      document.getElementById('log').innerText = log;
-      selected = false;
-
-      if (myHP <= 0 || enemyHP <= 0) {
-        document.getElementById('status').innerText = myHP <= 0 ? '패배했습니다 😵' : '승리했습니다 🎉';
-        document.getElementById('choices').style.display = 'none';
+    function sendMove(move) {
+      if (myMove) {
+        log("이미 선택함. 상대 대기 중...");
+        return;
       }
+      myMove = move;
+      log(`내 선택: ${move}`);
+      socket.emit("player_move", move);
+    }
+
+    socket.on("waiting", () => log("상대 기다리는 중..."));
+
+    socket.on("round_result", (result) => {
+      myMove = null;
+      log(`▶️ 결과: ${result}`);
+    });
+
+    socket.on("game_start", () => {
+      log("🎮 게임 시작! 가위, 바위, 보 중 하나 선택하세요.");
+    });
+
+    socket.on("opponent_disconnected", () => {
+      log("❌ 상대방이 나갔습니다. 재시작 대기 중...");
     });
   </script>
 </body>
