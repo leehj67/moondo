@@ -1,4 +1,4 @@
-// ✅ server.js
+// ✅ server.js - 진영 구분 + 절대 좌표 유지 방식
 const express = require("express");
 const http = require("http");
 const cors = require("cors");
@@ -17,6 +17,7 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 3000;
 const rooms = {}; // { roomId: [socket1, socket2] }
+const playerSides = new Map(); // socket.id -> 'top' | 'bottom'
 
 io.on("connection", (socket) => {
   let roomId = null;
@@ -35,7 +36,9 @@ io.on("connection", (socket) => {
   socket.join(roomId);
 
   const isFirst = rooms[roomId].length === 1;
-  socket.emit("assign_side", isFirst ? "bottom" : "top");
+  const side = isFirst ? "bottom" : "top";
+  playerSides.set(socket.id, side);
+  socket.emit("assign_side", side);
 
   if (rooms[roomId].length === 2) {
     io.to(roomId).emit("game_start");
@@ -56,10 +59,11 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     const idx = rooms[roomId]?.indexOf(socket);
     if (idx !== -1) rooms[roomId].splice(idx, 1);
+    playerSides.delete(socket.id);
     io.to(roomId).emit("opponent_disconnected");
   });
 });
 
 server.listen(PORT, () => {
-  console.log(` Listening on port ${PORT}`);
+  console.log(`✈️ Listening on port ${PORT}`);
 });
