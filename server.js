@@ -1,12 +1,13 @@
-const express = require('express');
-const http = require('http');
-const cors = require('cors');
-const { Server } = require('socket.io');
-
+// ✅ server.js
+const express = require("express");
+const http = require("http");
+const cors = require("cors");
+const { Server } = require("socket.io");
 const app = express();
+const server = http.createServer(app);
+
 app.use(cors());
 
-const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: "https://leehj67.github.io",
@@ -15,19 +16,17 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 3000;
-const rooms = {};
+const rooms = {}; // { roomId: [socket1, socket2] }
 
-io.on('connection', (socket) => {
-  console.log('✅ 연결:', socket.id);
-
+io.on("connection", (socket) => {
   let roomId = null;
+
   for (const id in rooms) {
     if (rooms[id].length < 2) {
       roomId = id;
       break;
     }
   }
-
   if (!roomId) roomId = socket.id;
   if (!rooms[roomId]) rooms[roomId] = [];
 
@@ -35,7 +34,8 @@ io.on('connection', (socket) => {
   socket.roomId = roomId;
   socket.join(roomId);
 
-  console.log(`▶️ ${socket.id} → 방 ${roomId}`);
+  const isFirst = rooms[roomId].length === 1;
+  socket.emit("assign_side", isFirst ? "bottom" : "top");
 
   if (rooms[roomId].length === 2) {
     io.to(roomId).emit("game_start");
@@ -54,14 +54,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("❌ 종료:", socket.id);
-    if (rooms[roomId]) {
-      rooms[roomId] = rooms[roomId].filter(s => s.id !== socket.id);
-      io.to(roomId).emit("opponent_disconnected");
-    }
+    const idx = rooms[roomId]?.indexOf(socket);
+    if (idx !== -1) rooms[roomId].splice(idx, 1);
+    io.to(roomId).emit("opponent_disconnected");
   });
 });
 
 server.listen(PORT, () => {
-  console.log(`🚀 서버 실행 중: ${PORT}`);
+  console.log(`✈️ Listening on port ${PORT}`);
 });
