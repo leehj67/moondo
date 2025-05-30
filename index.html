@@ -52,10 +52,11 @@ const player = {
 };
 
 const enemy = {
-  x: canvas.width / 2,
-  y: canvas.height * 0.15,
+  x: -999,  // 초기값을 다르게 설정
+  y: -999,
   radius: 20,
   color: 'orange',
+  facingAngle: 0,
   hp: 100
 };
 
@@ -68,7 +69,6 @@ let lastThrowTime = 0;
 
 let gameOver = false;
 let gameResult = "";
-
 const arena = {
   width: canvas.width,
   height: canvas.height,
@@ -82,7 +82,7 @@ canvas.addEventListener('mousemove', (e) => {
   const rect = canvas.getBoundingClientRect();
   mouseX = e.clientX - rect.left;
   mouseY = e.clientY - rect.top;
-  player.facingAngle = Math.atan2(mouseY - player.y, mouseX - player.y);
+  player.facingAngle = Math.atan2(mouseY - player.y, mouseX - player.x);
 });
 
 canvas.addEventListener('mousedown', (e) => {
@@ -95,7 +95,6 @@ canvas.addEventListener('mousedown', (e) => {
   }
 });
 
-// 모바일 터치로 이동
 canvas.addEventListener("touchstart", (e) => {
   const rect = canvas.getBoundingClientRect();
   const touch = e.touches[0];
@@ -106,12 +105,10 @@ canvas.addEventListener("touchstart", (e) => {
   player.facingAngle = Math.atan2(y - player.y, x - player.x);
 });
 
-// 모바일 Q 버튼
 document.getElementById('qButton').addEventListener('touchstart', () => {
   throwAxe();
 });
 
-// PC용 Q 키
 window.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'q') throwAxe();
 });
@@ -136,7 +133,7 @@ function throwAxe() {
     };
     axes.push(axe);
     socket.emit("spawn_axe", axe);
-    lastThrowTime = Date.now();
+    lastThrowTime = now;
   }
 }
 
@@ -169,6 +166,7 @@ socket.on("opponent_disconnected", () => {
 
 function update() {
   if (gameOver) return;
+
   const dx = player.targetX - player.x;
   const dy = player.targetY - player.y;
   const dist = Math.hypot(dx, dy);
@@ -234,9 +232,14 @@ function draw() {
   ctx.stroke();
 
   drawRotatedTriangle(player.x, player.y, player.radius, player.facingAngle, player.color);
-  drawRotatedTriangle(enemy.x, enemy.y, enemy.radius, enemy.facingAngle || 0, enemy.color);
   drawHealthBar(player);
-  drawHealthBar(enemy);
+
+  // enemy가 제대로 설정된 위치일 때만 그린다
+  if (enemy.x !== -999 && enemy.y !== -999) {
+    drawRotatedTriangle(enemy.x, enemy.y, enemy.radius, enemy.facingAngle || 0, enemy.color);
+    drawHealthBar(enemy);
+  }
+
   drawCooldownIndicator();
 
   axes.forEach(axe => drawRotatedAxe(axe));
