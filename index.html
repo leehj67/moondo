@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>턴제 격투 PVP</title>
   <style>
     body {
@@ -60,6 +60,13 @@
       width: 200px;
       height: 20px;
     }
+    #resultBanner {
+      margin-top: 10px;
+      display: none;
+    }
+    #resultBanner img {
+      width: 180px;
+    }
   </style>
 </head>
 <body>
@@ -80,8 +87,12 @@
   <div id="timer">제한 시간: -</div>
 
   <div id="battlefield">
-    <img id="playerSprite" src="./tv_girl/stand.png" alt="player">
-    <img id="enemySprite" src="./tv_girl/stand.png" alt="enemy">
+    <img id="playerSprite" src="tv_girl/stand.png" alt="player">
+    <img id="enemySprite" src="tv_girl/stand.png" alt="enemy">
+  </div>
+
+  <div id="resultBanner">
+    <img id="resultImage" src="" alt="result" />
   </div>
 
   <div class="btns" id="attackBtns" style="display: none;">
@@ -109,6 +120,8 @@
     const enemySprite = document.getElementById("enemySprite");
     const playerHP = document.getElementById("playerHP");
     const enemyHP = document.getElementById("enemyHP");
+    const resultBanner = document.getElementById("resultBanner");
+    const resultImage = document.getElementById("resultImage");
 
     let isMyTurn = false;
     let timeout;
@@ -143,11 +156,11 @@
       defendBtns.style.display = "none";
 
       if (currentRole === 'attack') {
-        if (action === 'high') playerSprite.src = "./tv_girl/kick.png";
-        else if (action === 'low') playerSprite.src = "./tv_girl/punch.png";
-        else if (action === 'grab') playerSprite.src = "./tv_girl/grab.png";
+        if (action === 'high') playerSprite.src = "tv_girl/kick.png";
+        else if (action === 'low') playerSprite.src = "tv_girl/punch.png";
+        else if (action === 'grab') playerSprite.src = "tv_girl/grab.png";
       } else if (currentRole === 'defend') {
-        playerSprite.src = "./tv_girl/parry.png";
+        playerSprite.src = "tv_girl/stand.png";
       }
 
       socket.emit("player_action", { action });
@@ -157,10 +170,13 @@
       isMyTurn = true;
       currentRole = role;
       turnDiv.textContent = role === 'attack' ? "[당신의 공격 턴]" : "[당신의 방어 턴]";
-      playerSprite.src = "./tv_girl/stand.png";
-      enemySprite.src = "./tv_girl/stand.png";
+      playerSprite.src = "tv_girl/stand.png";
+      enemySprite.src = "tv_girl/stand.png";
+      resultBanner.style.display = "none"; // 게임 시작 시 결과 이미지 숨김
+
       if (role === 'attack') attackBtns.style.display = "block";
       else defendBtns.style.display = "block";
+
       startTimer();
     });
 
@@ -169,14 +185,23 @@
       log(msg);
       turnDiv.textContent = "상대의 턴...";
 
-      if (result === 'hit') enemySprite.src = "./tv_girl/hit.png";
-      else if (result === 'guard') enemySprite.src = "./tv_girl/parry.png";
-      else if (result === 'win') playerSprite.src = "./tv_girl/victory.png";
-      else if (result === 'lose') playerSprite.src = "./tv_girl/hit.png";
+      if (result === 'hit') {
+        enemySprite.src = "tv_girl/hit.png";
+      } else if (result === 'guard') {
+        enemySprite.src = "tv_girl/guard.png";
+      } else if (result === 'win') {
+        resultBanner.style.display = "block";
+        resultImage.src = "tv_girl/victory.png";
+      } else if (result === 'lose') {
+        resultBanner.style.display = "block";
+        resultImage.src = "tv_girl/defeat.png";
+      }
 
       setTimeout(() => {
-        playerSprite.src = "./tv_girl/stand.png";
-        enemySprite.src = "./tv_girl/stand.png";
+        if (result !== 'win' && result !== 'lose') {
+          playerSprite.src = "tv_girl/stand.png";
+          enemySprite.src = "tv_girl/stand.png";
+        }
       }, 1000);
     });
 
@@ -187,6 +212,7 @@
 
     socket.on("game_start", ({ first }) => {
       log(`동전 던지기 결과: ${first ? "당신이 선공입니다!" : "상대가 선공입니다."}`);
+      resultBanner.style.display = "none";
     });
 
     socket.on("waiting", () => {
