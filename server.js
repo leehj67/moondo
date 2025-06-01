@@ -55,8 +55,10 @@ io.on("connection", (socket) => {
     }
     p1.socket.emit("game_start", { first: p1.role === 'attack' });
     p2.socket.emit("game_start", { first: p2.role === 'attack' });
-    p1.socket.emit("your_turn", { role: p1.role });
-    p2.socket.emit("your_turn", { role: p2.role });
+    setTimeout(() => {
+      p1.socket.emit("your_turn", { role: p1.role });
+      p2.socket.emit("your_turn", { role: p2.role });
+    }, 500);
   } else {
     socket.emit("waiting");
   }
@@ -96,7 +98,7 @@ function resolveTurn(room) {
 
   if (!attacker.choice) {
     msg = '공격자가 선택하지 않아 턴이 넘겨졌습니다.';
-    result = 'guard';
+    result = 'none';
   } else if (!defender.choice) {
     defender.hp--;
     msg = `방어자가 선택하지 않아 공격 성공! 방어자 HP -1 (남은 HP: ${defender.hp})`;
@@ -110,21 +112,25 @@ function resolveTurn(room) {
     result = 'hit';
   }
 
-  attacker.socket.emit("turn_result", { msg, result });
-  defender.socket.emit("turn_result", { msg, result });
+  p1.socket.emit("turn_result", { msg, result });
+  p2.socket.emit("turn_result", { msg, result });
 
-  attacker.socket.emit("hp_update", { my: attacker.hp, enemy: defender.hp });
-  defender.socket.emit("hp_update", { my: defender.hp, enemy: attacker.hp });
+  p1.socket.emit("hp_update", { my: p1.hp, enemy: p2.hp });
+  p2.socket.emit("hp_update", { my: p2.hp, enemy: p1.hp });
 
   if (defender.hp <= 0) {
-    attacker.socket.emit("turn_result", { msg: "🎉 당신이 승리했습니다!", result: 'hit' });
-    defender.socket.emit("turn_result", { msg: "💀 패배했습니다...", result: 'hit' });
+    attacker.socket.emit("turn_result", { msg: "🎉 당신이 승리했습니다!", result: 'win' });
+    defender.socket.emit("turn_result", { msg: "💀 패배했습니다...", result: 'lose' });
     return;
   }
 
-  [p1.role, p2.role] = [p2.role, p1.role];
   delete p1.choice;
   delete p2.choice;
+
+  // 턴 유지: 공격 성공 시 역할 유지, 방어 성공 시 교체
+  if (result === 'guard') {
+    [p1.role, p2.role] = [p2.role, p1.role];
+  }
 
   setTimeout(() => {
     p1.socket.emit("your_turn", { role: p1.role });
