@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>지옥의 가위바위보: PVP</title>
+  <meta charset="UTF-8">
+  <title>턴제 격투 PVP</title>
   <style>
     body {
       font-family: 'Courier New', monospace;
@@ -17,144 +17,140 @@
       width: 100%;
       max-width: 600px;
       height: 300px;
-      border: 1px solid lime;
-      padding: 10px;
       overflow-y: scroll;
+      border: 1px solid lime;
       background: #111;
+      padding: 10px;
     }
     .btns {
-      margin-top: 20px;
+      margin-top: 10px;
     }
     button {
       background: lime;
       color: black;
-      font-weight: bold;
       padding: 10px;
       margin: 5px;
       cursor: pointer;
     }
-    #battlefield {
-      margin-top: 30px;
-      display: flex;
-      justify-content: space-around;
-      width: 600px;
-      align-items: center;
+    #turn {
+      margin-top: 10px;
+      font-size: 1.2em;
     }
-    #battlefield img {
+    #timer {
+      font-size: 1.2em;
+      margin: 5px;
+    }
+    #character {
+      margin-top: 20px;
+    }
+    #character img {
       width: 200px;
       height: auto;
-      transition: all 0.3s ease;
-      image-rendering: pixelated;
-    }
-    #healthbars {
-      display: flex;
-      justify-content: space-around;
-      width: 600px;
-      margin-top: 10px;
-      color: white;
-    }
-    progress {
-      width: 200px;
-      height: 20px;
     }
   </style>
 </head>
 <body>
-  <h1>지옥의 가위바위보: PVP</h1>
+  <h1>턴제 격투 PVP</h1>
 
-  <div id="battlefield">
-    <img id="player" src="tv_girl/stand.png" />
-    <img id="opponent" src="tv_girl/stand.png" />
+  <div id="turn">상대 기다리는 중...</div>
+  <div id="timer">제한 시간: -</div>
+
+  <div id="character">
+    <img id="playerSprite" src="tv_girl/stand.png" alt="player">
   </div>
 
-  <div id="healthbars">
-    <div>
-      <div>YOU</div>
-      <progress id="playerHP" value="3" max="3"></progress>
-    </div>
-    <div>
-      <div>ENEMY</div>
-      <progress id="opponentHP" value="3" max="3"></progress>
-    </div>
+  <div class="btns" id="attackBtns" style="display: none;">
+    <button onclick="choose('high')">상단 공격</button>
+    <button onclick="choose('low')">하단 공격</button>
+    <button onclick="choose('grab')">잡기</button>
+  </div>
+  <div class="btns" id="defendBtns" style="display: none;">
+    <button onclick="choose('high')">상단 방어</button>
+    <button onclick="choose('low')">하단 방어</button>
+    <button onclick="choose('grab')">잡기 방어</button>
   </div>
 
   <div id="log"></div>
-
-  <div class="btns">
-    <button onclick="sendMove('rock')">✊ 주먹</button>
-    <button onclick="sendMove('paper')">✋ 보</button>
-    <button onclick="sendMove('scissors')">✌ 가위</button>
-  </div>
 
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
     const socket = io("https://moondo-production.up.railway.app");
     const logDiv = document.getElementById("log");
-    let myMove = null;
-    let myHP = 3;
-    let enemyHP = 3;
+    const turnDiv = document.getElementById("turn");
+    const timerDiv = document.getElementById("timer");
+    const attackBtns = document.getElementById("attackBtns");
+    const defendBtns = document.getElementById("defendBtns");
+    const sprite = document.getElementById("playerSprite");
 
-    function updateHP() {
-      document.getElementById("playerHP").value = myHP;
-      document.getElementById("opponentHP").value = enemyHP;
-    }
+    let isMyTurn = false;
+    let timeout;
+    let countdown;
+    let currentRole = null;
 
     function log(msg) {
       logDiv.innerHTML += `> ${msg}<br>`;
       logDiv.scrollTop = logDiv.scrollHeight;
     }
 
-    function sendMove(move) {
-      if (myMove || myHP <= 0 || enemyHP <= 0) {
-        log("이미 선택함 또는 게임 종료됨.");
-        return;
+    function startTimer() {
+      let timeLeft = 10;
+      timerDiv.textContent = `제한 시간: ${timeLeft}`;
+      countdown = setInterval(() => {
+        timeLeft--;
+        timerDiv.textContent = `제한 시간: ${timeLeft}`;
+        if (timeLeft <= 0) clearInterval(countdown);
+      }, 1000);
+
+      timeout = setTimeout(() => {
+        choose(null); // 시간 초과 처리
+      }, 10000);
+    }
+
+    function choose(action) {
+      clearInterval(countdown);
+      clearTimeout(timeout);
+      timerDiv.textContent = `제한 시간: -`;
+
+      attackBtns.style.display = "none";
+      defendBtns.style.display = "none";
+
+      if (currentRole === 'attack') {
+        if (action === 'high') sprite.src = "tv_girl/high_kick.png";
+        else if (action === 'low') sprite.src = "tv_girl/punch.png";
+        else if (action === 'grab') sprite.src = "tv_girl/grap.png";
+      } else if (currentRole === 'defend') {
+        sprite.src = "tv_girl/stand.png";
       }
-      myMove = move;
-      log(`내 선택: ${move}`);
-      socket.emit("player_move", move);
+
+      socket.emit("player_action", { action });
     }
 
-    function setPose(playerPose, opponentPose) {
-      document.getElementById("player").src = `tv_girl/${playerPose}.png`;
-      document.getElementById("opponent").src = `tv_girl/${opponentPose}.png`;
-    }
-
-    socket.on("waiting", () => log("상대 기다리는 중..."));
-
-    socket.on("game_start", () => {
-      log("🎮 게임 시작! 가위, 바위, 보 중 하나 선택하세요.");
-      myHP = 3;
-      enemyHP = 3;
-      updateHP();
-      setPose("stand", "stand");
+    socket.on("your_turn", ({ role }) => {
+      isMyTurn = true;
+      currentRole = role;
+      turnDiv.textContent = role === 'attack' ? "[당신의 공격 턴]" : "[당신의 방어 턴]";
+      sprite.src = "tv_girl/stand.png";
+      if (role === 'attack') attackBtns.style.display = "block";
+      else defendBtns.style.display = "block";
+      startTimer();
     });
 
-    socket.on("round_result", (result) => {
-      myMove = null;
-      log(`▶️ 결과: ${result}`);
+    socket.on("turn_result", ({ msg }) => {
+      isMyTurn = false;
+      log(msg);
+      turnDiv.textContent = "상대의 턴...";
+    });
 
-      if (result.includes("승리")) {
-        enemyHP--;
-        setPose("attack", "defeat");
-      } else if (result.includes("패배")) {
-        myHP--;
-        setPose("defeat", "attack");
-      } else {
-        setPose("stand", "stand");
-      }
+    socket.on("game_start", ({ first }) => {
+      log(`동전 던지기 결과: ${first ? "당신이 선공입니다!" : "상대가 선공입니다."}`);
+    });
 
-      updateHP();
-
-      if (myHP <= 0) {
-        log("💀 패배! 다시 시작하려면 새로고침하세요.");
-      } else if (enemyHP <= 0) {
-        log("🏆 승리! 상대를 쓰러뜨렸습니다!");
-      }
+    socket.on("waiting", () => {
+      turnDiv.textContent = "상대 기다리는 중...";
     });
 
     socket.on("opponent_disconnected", () => {
-      log("❌ 상대방이 나갔습니다. 재시작 대기 중...");
-      setPose("stand", "stand");
+      log("상대가 나갔습니다. 새로고침으로 다시 시작하세요.");
     });
   </script>
 </body>
