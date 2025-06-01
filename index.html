@@ -1,199 +1,120 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>턴제 격투 PVP</title>
+  <meta charset="UTF-8" />
+  <title>지옥의 격투: PVP</title>
   <style>
     body {
-      font-family: 'Courier New', monospace;
       background: black;
-      color: lime;
+      color: white;
+      font-family: 'Courier New', monospace;
       display: flex;
       flex-direction: column;
       align-items: center;
       padding: 20px;
     }
-    #log {
-      width: 100%;
-      max-width: 600px;
-      height: 300px;
-      overflow-y: scroll;
-      border: 1px solid lime;
-      background: #111;
-      padding: 10px;
-    }
-    .btns {
-      margin-top: 10px;
-    }
-    button {
-      background: lime;
-      color: black;
-      padding: 10px;
-      margin: 5px;
-      cursor: pointer;
-    }
-    #turn {
-      margin-top: 10px;
-      font-size: 1.2em;
-    }
-    #timer {
-      font-size: 1.2em;
-      margin: 5px;
-    }
+
     #battlefield {
-      margin-top: 20px;
+      position: relative;
+      width: 800px;
+      height: 400px;
       display: flex;
-      justify-content: space-around;
-      width: 600px;
+      justify-content: space-between;
+      align-items: center;
+      background: #222;
+      border: 2px solid lime;
+      margin-bottom: 20px;
     }
-    #battlefield img {
-      width: 200px;
-      height: auto;
+
+    .character {
+      position: relative;
+      width: 300px;
+      height: 400px;
     }
-    #healthbar {
+
+    .character img.base {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+    }
+
+    .character img.overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .character.active .overlay {
+      opacity: 1;
+    }
+
+    #hp-bars {
       display: flex;
-      justify-content: space-around;
-      width: 600px;
+      justify-content: space-between;
+      width: 800px;
       margin-bottom: 10px;
     }
-    progress {
-      width: 200px;
-      height: 20px;
+
+    .hp {
+      width: 300px;
     }
   </style>
 </head>
 <body>
-  <h1>턴제 격투 PVP</h1>
+  <h1>지옥의 격투: PVP</h1>
 
-  <div id="healthbar">
+  <div id="hp-bars">
     <div>
-      <span>YOU</span>
-      <progress id="playerHP" value="3" max="3"></progress>
+      <div>YOU</div>
+      <progress id="playerHP" value="3" max="3" class="hp"></progress>
     </div>
     <div>
-      <span>ENEMY</span>
-      <progress id="enemyHP" value="3" max="3"></progress>
+      <div>ENEMY</div>
+      <progress id="opponentHP" value="3" max="3" class="hp"></progress>
     </div>
   </div>
-
-  <div id="turn">상대 기다리는 중...</div>
-  <div id="timer">제한 시간: -</div>
 
   <div id="battlefield">
-    <img id="playerSprite" src="tv_girl/stand.png" alt="player">
-    <img id="enemySprite" src="tv_girl/stand.png" alt="enemy">
+    <div id="player1" class="character">
+      <img src="characters/hero/stand.png" class="base" id="p1-base">
+      <img src="characters/hero/punch.png" class="overlay" id="p1-attack">
+      <img src="characters/hero/parry.png" class="overlay" id="p1-parry">
+      <img src="characters/hero/hit.png" class="overlay" id="p1-hit">
+      <img src="characters/hero/victory.png" class="overlay" id="p1-victory">
+    </div>
+
+    <div id="player2" class="character">
+      <img src="characters/hero/stand.png" class="base" id="p2-base">
+      <img src="characters/hero/punch.png" class="overlay" id="p2-attack">
+      <img src="characters/hero/parry.png" class="overlay" id="p2-parry">
+      <img src="characters/hero/hit.png" class="overlay" id="p2-hit">
+      <img src="characters/hero/victory.png" class="overlay" id="p2-victory">
+    </div>
   </div>
 
-  <div class="btns" id="attackBtns" style="display: none;">
-    <button onclick="choose('high')">상단 공격</button>
-    <button onclick="choose('low')">하단 공격</button>
-    <button onclick="choose('grab')">잡기</button>
-  </div>
-  <div class="btns" id="defendBtns" style="display: none;">
-    <button onclick="choose('high')">상단 방어</button>
-    <button onclick="choose('low')">하단 방어</button>
-    <button onclick="choose('grab')">잡기 방어</button>
+  <div>
+    <!-- 조작 버튼 등은 여기에 -->
   </div>
 
-  <div id="log"></div>
-
-  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
-    const socket = io("https://moondo-production.up.railway.app");
-    const logDiv = document.getElementById("log");
-    const turnDiv = document.getElementById("turn");
-    const timerDiv = document.getElementById("timer");
-    const attackBtns = document.getElementById("attackBtns");
-    const defendBtns = document.getElementById("defendBtns");
-    const playerSprite = document.getElementById("playerSprite");
-    const enemySprite = document.getElementById("enemySprite");
-    const playerHP = document.getElementById("playerHP");
-    const enemyHP = document.getElementById("enemyHP");
-
-    let isMyTurn = false;
-    let timeout;
-    let countdown;
-    let currentRole = null;
-
-    function log(msg) {
-      logDiv.innerHTML += `> ${msg}<br>`;
-      logDiv.scrollTop = logDiv.scrollHeight;
+    function showPose(playerId, poseId) {
+      document.querySelectorAll(`#${playerId} .overlay`).forEach(img => img.classList.remove("active"));
+      if (poseId) document.getElementById(poseId).classList.add("active");
     }
 
-    function startTimer() {
-      let timeLeft = 10;
-      timerDiv.textContent = `제한 시간: ${timeLeft}`;
-      countdown = setInterval(() => {
-        timeLeft--;
-        timerDiv.textContent = `제한 시간: ${timeLeft}`;
-        if (timeLeft <= 0) clearInterval(countdown);
-      }, 1000);
-
-      timeout = setTimeout(() => {
-        choose(null); // 시간 초과 처리
-      }, 10000);
-    }
-
-    function choose(action) {
-      clearInterval(countdown);
-      clearTimeout(timeout);
-      timerDiv.textContent = `제한 시간: -`;
-
-      attackBtns.style.display = "none";
-      defendBtns.style.display = "none";
-
-      if (currentRole === 'attack') {
-        if (action === 'high') playerSprite.src = "tv_girl/kick.png";
-        else if (action === 'low') playerSprite.src = "tv_girl/punch.png";
-        else if (action === 'grab') playerSprite.src = "tv_girl/grap.png";
-      } else if (currentRole === 'defend') {
-        playerSprite.src = "tv_girl/stand.png";
-      }
-
-      socket.emit("player_action", { action });
-    }
-
-    socket.on("your_turn", ({ role }) => {
-      isMyTurn = true;
-      currentRole = role;
-      turnDiv.textContent = role === 'attack' ? "[당신의 공격 턴]" : "[당신의 방어 턴]";
-      playerSprite.src = "tv_girl/stand.png";
-      enemySprite.src = "tv_girl/stand.png";
-      if (role === 'attack') attackBtns.style.display = "block";
-      else defendBtns.style.display = "block";
-      startTimer();
-    });
-
-    socket.on("turn_result", ({ msg, result }) => {
-      isMyTurn = false;
-      log(msg);
-      turnDiv.textContent = "상대의 턴...";
-
-      if (result === 'hit') enemySprite.src = "tv_girl/hit.png";
-      else if (result === 'guard') enemySprite.src = "tv_girl/defend.png";
-
+    // 예시: 공격 연출
+    function simulateAttack() {
+      showPose("player1", "p1-attack");
+      showPose("player2", "p2-hit");
       setTimeout(() => {
-        playerSprite.src = "tv_girl/stand.png";
-        enemySprite.src = "tv_girl/stand.png";
+        showPose("player1");
+        showPose("player2");
       }, 1000);
-    });
-
-    socket.on("hp_update", ({ my, enemy }) => {
-      playerHP.value = my;
-      enemyHP.value = enemy;
-    });
-
-    socket.on("game_start", ({ first }) => {
-      log(`동전 던지기 결과: ${first ? "당신이 선공입니다!" : "상대가 선공입니다."}`);
-    });
-
-    socket.on("waiting", () => {
-      turnDiv.textContent = "상대 기다리는 중...";
-    });
-
-    socket.on("opponent_disconnected", () => {
-      log("상대가 나갔습니다. 새로고침으로 다시 시작하세요.");
-    });
+    }
   </script>
 </body>
 </html>
