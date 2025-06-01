@@ -47,17 +47,16 @@
       image-rendering: pixelated;
     }
     #healthbars {
-  display: flex;
-  justify-content: space-around;
-  width: 600px;
-  margin-top: 10px;
-  color: white;
-}
-progress {
-  width: 200px;
-  height: 20px;
-}
-
+      display: flex;
+      justify-content: space-around;
+      width: 600px;
+      margin-top: 10px;
+      color: white;
+    }
+    progress {
+      width: 200px;
+      height: 20px;
+    }
   </style>
 </head>
 <body>
@@ -68,18 +67,18 @@ progress {
     <img id="opponent" src="tv_girl/stand.png" />
   </div>
 
-  <div id="log"></div>
   <div id="healthbars">
-  <div>
-    <div>YOU</div>
-    <progress id="playerHP" value="3" max="3"></progress>
+    <div>
+      <div>YOU</div>
+      <progress id="playerHP" value="3" max="3"></progress>
+    </div>
+    <div>
+      <div>ENEMY</div>
+      <progress id="opponentHP" value="3" max="3"></progress>
+    </div>
   </div>
-  <div>
-    <div>ENEMY</div>
-    <progress id="opponentHP" value="3" max="3"></progress>
-  </div>
-</div>
 
+  <div id="log"></div>
 
   <div class="btns">
     <button onclick="sendMove('rock')">✊ 주먹</button>
@@ -89,49 +88,16 @@ progress {
 
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
-    const socket = io("https://moondo-production.up.railway.app"); // 서버 주소 유지
+    const socket = io("https://moondo-production.up.railway.app");
     const logDiv = document.getElementById("log");
     let myMove = null;
     let myHP = 3;
-let enemyHP = 3;
+    let enemyHP = 3;
 
-function updateHP() {
-  document.getElementById("playerHP").value = myHP;
-  document.getElementById("opponentHP").value = enemyHP;
-}
-
-socket.on("game_start", () => {
-  log("🎮 게임 시작! 가위, 바위, 보 중 하나 선택하세요.");
-  myHP = 3;
-  enemyHP = 3;
-  updateHP();
-  setPose("stand", "stand");
-});
-
-socket.on("round_result", (result) => {
-  myMove = null;
-  log(`▶️ 결과: ${result}`);
-
-  if (result.includes("승리")) {
-    enemyHP--;
-    setPose("attack", "defeat");
-  } else if (result.includes("패배")) {
-    myHP--;
-    setPose("defeat", "attack");
-  } else {
-    setPose("stand", "stand");
-  }
-
-  updateHP();
-
-  // 게임 종료 처리
-  if (myHP <= 0) {
-    log("💀 패배! 다시 시작하려면 새로고침하세요.");
-  } else if (enemyHP <= 0) {
-    log("🏆 승리! 상대를 쓰러뜨렸습니다!");
-  }
-});
-
+    function updateHP() {
+      document.getElementById("playerHP").value = myHP;
+      document.getElementById("opponentHP").value = enemyHP;
+    }
 
     function log(msg) {
       logDiv.innerHTML += `> ${msg}<br>`;
@@ -139,8 +105,8 @@ socket.on("round_result", (result) => {
     }
 
     function sendMove(move) {
-      if (myMove) {
-        log("이미 선택함. 상대 대기 중...");
+      if (myMove || myHP <= 0 || enemyHP <= 0) {
+        log("이미 선택함 또는 게임 종료됨.");
         return;
       }
       myMove = move;
@@ -157,18 +123,32 @@ socket.on("round_result", (result) => {
 
     socket.on("game_start", () => {
       log("🎮 게임 시작! 가위, 바위, 보 중 하나 선택하세요.");
+      myHP = 3;
+      enemyHP = 3;
+      updateHP();
       setPose("stand", "stand");
     });
 
     socket.on("round_result", (result) => {
       myMove = null;
       log(`▶️ 결과: ${result}`);
+
       if (result.includes("승리")) {
+        enemyHP--;
         setPose("attack", "defeat");
       } else if (result.includes("패배")) {
+        myHP--;
         setPose("defeat", "attack");
       } else {
         setPose("stand", "stand");
+      }
+
+      updateHP();
+
+      if (myHP <= 0) {
+        log("💀 패배! 다시 시작하려면 새로고침하세요.");
+      } else if (enemyHP <= 0) {
+        log("🏆 승리! 상대를 쓰러뜨렸습니다!");
       }
     });
 
