@@ -33,16 +33,37 @@
       margin: 5px;
       cursor: pointer;
     }
+    #battlefield {
+      margin-top: 30px;
+      display: flex;
+      justify-content: space-around;
+      width: 600px;
+      align-items: center;
+    }
+    #battlefield img {
+      width: 200px;
+      height: auto;
+      transition: all 0.3s ease;
+      image-rendering: pixelated;
+    }
   </style>
 </head>
 <body>
   <h1>지옥의 가위바위보: PVP</h1>
+
+  <div id="battlefield">
+    <img id="player" src="tv_girl/stand.png" />
+    <img id="opponent" src="tv_girl/stand.png" />
+  </div>
+
   <div id="log"></div>
+
   <div class="btns">
     <button onclick="sendMove('rock')">✊ 주먹</button>
     <button onclick="sendMove('paper')">✋ 보</button>
     <button onclick="sendMove('scissors')">✌ 가위</button>
   </div>
+
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
     const socket = io("https://moondo-production.up.railway.app");
@@ -64,19 +85,34 @@
       socket.emit("player_move", move);
     }
 
+    function setPose(playerPose, opponentPose) {
+      document.getElementById("player").src = `tv_girl/${playerPose}.png`;
+      document.getElementById("opponent").src = `tv_girl/${opponentPose}.png`;
+    }
+
     socket.on("waiting", () => log("상대 기다리는 중..."));
+
+    socket.on("game_start", () => {
+      log("🎮 게임 시작! 가위, 바위, 보 중 하나 선택하세요.");
+      setPose("stand", "stand");
+    });
 
     socket.on("round_result", (result) => {
       myMove = null;
       log(`▶️ 결과: ${result}`);
-    });
 
-    socket.on("game_start", () => {
-      log("🎮 게임 시작! 가위, 바위, 보 중 하나 선택하세요.");
+      if (result.includes("승리")) {
+        setPose("attack", "defeat");
+      } else if (result.includes("패배")) {
+        setPose("defeat", "attack");
+      } else {
+        setPose("stand", "stand");
+      }
     });
 
     socket.on("opponent_disconnected", () => {
       log("❌ 상대방이 나갔습니다. 재시작 대기 중...");
+      setPose("stand", "stand");
     });
   </script>
 </body>
