@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
@@ -6,12 +5,12 @@ const { Server } = require('socket.io');
 
 const app = express();
 app.use(cors());
-app.use(express.static('moondo/public'));
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "https://leehj67.github.io",
+    origin: "*", // GitHub Pages 등 외부에서 접속 허용
     methods: ["GET", "POST"]
   }
 });

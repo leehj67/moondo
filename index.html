@@ -66,7 +66,7 @@
 
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
-    const socket = io("https://moondo-production.up.railway.app");
+    const socket = io("https://moondo-production.up.railway.app"); // 서버 주소 유지
     const logDiv = document.getElementById("log");
     let myMove = null;
 
@@ -100,7 +100,6 @@
     socket.on("round_result", (result) => {
       myMove = null;
       log(`▶️ 결과: ${result}`);
-
       if (result.includes("승리")) {
         setPose("attack", "defeat");
       } else if (result.includes("패배")) {
