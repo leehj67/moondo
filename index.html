@@ -12,7 +12,7 @@
     }
     #battlefield {
       width: 800px;
-      height: 400px;
+      height: 600px;
       background: #111;
       margin: 20px auto;
       border: 1px solid lime;
@@ -23,9 +23,26 @@
       top: 0;
       left: 0;
     }
-    select, button {
-      margin: 10px;
-      padding: 5px 10px;
+    #controls {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    #deck {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .card {
+      background: white;
+      color: black;
+      padding: 10px;
+      width: 60px;
+      text-align: center;
+      cursor: pointer;
+      border: 2px solid lime;
     }
     #log {
       max-width: 800px;
@@ -39,20 +56,17 @@
   </style>
 </head>
 <body>
-  <h2>// ==== index.html (그래이언트) ====</h2>
-  <h1>TV Girl 전쟁</h1>
-
-  <div>
-    <select id="unitType">
-      <option value="tv_girl">TV Girl</option>
-      <option value="enemy_bot">Enemy Bot</option>
-      <option value="boss">Boss</option>
-    </select>
-    <button onclick="spawnUnit()">소환</button>
-  </div>
+  <h2>// ==== index.html (클라이언트) ====</h2>
+  <h1>TV Girl 전장</h1>
 
   <div id="battlefield">
-    <canvas id="canvas" width="800" height="400"></canvas>
+    <canvas id="canvas" width="800" height="600"></canvas>
+  </div>
+
+  <div id="deck">
+    <div class="card" onclick="playCard('tv_girl')">TV Girl</div>
+    <div class="card" onclick="playCard('enemy_bot')">Enemy Bot</div>
+    <div class="card" onclick="playCard('boss')">Boss</div>
   </div>
 
   <div id="log"></div>
@@ -69,8 +83,7 @@
       logDiv.scrollTop = logDiv.scrollHeight;
     }
 
-    function spawnUnit() {
-      const type = document.getElementById("unitType").value;
+    function playCard(type) {
       socket.emit("spawn", { type });
     }
 
