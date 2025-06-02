@@ -19,9 +19,9 @@ app.use(express.static(__dirname));
 const PORT = process.env.PORT || 3000;
 
 const rooms = {}; // for 가위바위보
-const units = []; // for 타워디펜스
+const units = []; // for 타우디펜스
 
-// 유닛 스탯
+// 유니트 스택
 const unitStats = {
   tv_girl: { speed: 1, hp: 5, atk: 1 },
   enemy_bot: { speed: 0.5, hp: 8, atk: 2 },
@@ -41,7 +41,7 @@ function getInitialPosition(type) {
 io.on("connection", (socket) => {
   console.log("✅ 연결:", socket.id);
 
-  // 기존 가위바위보
+  // 기지가위바위보
   let roomId = null;
   for (const id in rooms) {
     if (rooms[id].length < 2) {
@@ -76,7 +76,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // 타워디펜스 유닛 소환
+  // 타우디펜스 유니트 소환
   socket.on('spawn', ({ type }) => {
     if (!unitStats[type]) return;
     const pos = getInitialPosition(type);
@@ -88,7 +88,7 @@ io.on("connection", (socket) => {
       direction: pos.direction,
       ...unitStats[type],
     });
-    console.log('📦 유닛 소환:', type);
+    console.log('📦 유니트 소환:', type);
   });
 
   socket.on("disconnect", () => {
@@ -99,7 +99,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// 유닛 이동 루프
+// 유니트 이동 루프
 setInterval(() => {
   for (const unit of units) {
     if (unit.direction === 'up') {
