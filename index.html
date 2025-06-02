@@ -23,12 +23,18 @@
       top: 0;
       left: 0;
     }
-    button {
-      margin: 10px;
-      padding: 10px;
+    .card-bar {
+      display: flex;
+      justify-content: center;
+      margin: 10px 0;
+    }
+    .card {
       background: white;
+      color: black;
       border: 2px solid lime;
-      font-family: monospace;
+      margin: 0 5px;
+      padding: 5px;
+      cursor: pointer;
     }
     #log {
       max-width: 800px;
@@ -48,10 +54,10 @@
     <canvas id="canvas" width="800" height="400"></canvas>
   </div>
 
-  <div>
-    <button onclick="spawnUnit('tv_girl')">TV Girl</button>
-    <button onclick="spawnUnit('enemy_bot')">Enemy Bot</button>
-    <button onclick="spawnUnit('boss')">Boss</button>
+  <div class="card-bar">
+    <div class="card" onclick="spawnUnit('tv_girl')">TV Girl</div>
+    <div class="card" onclick="spawnUnit('enemy_bot')">Enemy Bot</div>
+    <div class="card" onclick="spawnUnit('boss')">Boss</div>
   </div>
 
   <div id="log"></div>
@@ -69,12 +75,12 @@
     }
 
     function spawnUnit(type) {
-      socket.emit("spawn", { type });
+      socket.emit("spawn_unit", { type });
     }
 
-    socket.on("state", (units) => {
+    socket.on("game_state", (state) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      for (const unit of units) {
+      for (const unit of state.units) {
         const img = new Image();
         img.src = `tv_girl/${unit.type}.png`;
         img.onload = () => {
